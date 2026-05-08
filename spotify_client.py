@@ -23,6 +23,14 @@ class TrackInfo:
 
 
 @dataclass
+class AlbumInfo:
+    album_name: str
+    artist: str
+    release_year: int
+    cover_url: str
+
+
+@dataclass
 class AlbumTrack:
     track_number: int
     track_name: str
@@ -96,18 +104,18 @@ class SpotifyClient:
         tracks.sort(key=lambda t: t.track_number)
         return tracks
 
-    def get_album_info(self, album_id: str) -> dict:
+    def get_album_info(self, album_id: str) -> AlbumInfo:
         """Return album-level metadata (artist, release year, cover url)."""
         album = self._sp.album(album_id)
         images = album.get("images", [])
         artists = album.get("artists", [])
 
-        return {
-            "album_name": album["name"],
-            "artist": ", ".join(a["name"] for a in artists),
-            "release_year": self._parse_year(album.get("release_date", "")),
-            "cover_url": images[0]["url"] if images else "",
-        }
+        return AlbumInfo(
+            album_name=album["name"],
+            artist=", ".join(a["name"] for a in artists),
+            release_year=self._parse_year(album.get("release_date", "")),
+            cover_url=images[0]["url"] if images else "",
+        )
 
     @staticmethod
     def _parse_year(release_date: str) -> int:

@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from spotify_client import SpotifyClient, TrackInfo, AlbumTrack
+from spotify_client import SpotifyClient, TrackInfo, AlbumTrack, AlbumInfo
 
 load_dotenv()
 
@@ -83,15 +83,17 @@ class ObsidianWriter:
     # ------------------------------------------------------------------ #
 
     def _create_file(self, path: Path, track: TrackInfo, rating: int, notes: str) -> None:
-        timestamp_ms = int(time.time() * 1000)
-        cover_filename = f"{_sanitize(track.album_name)}-{timestamp_ms}.png"
-        self._download_image(track.cover_url, self._assets / cover_filename)
-
+        album_info = self._spotify.get_album_info(track.album_id)
         album_tracks = self._spotify.get_album_tracks(track.album_id)
+
+        timestamp_ms = int(time.time() * 1000)
+        cover_filename = f"{_sanitize(album_info.album_name)}-{timestamp_ms}.png"
+        self._download_image(album_info.cover_url, self._assets / cover_filename)
+
         today = date.today().isoformat()
 
         content = self._build_content(
-            track=track,
+            album_info=album_info,
             album_tracks=album_tracks,
             cover_filename=cover_filename,
             today=today,
@@ -103,7 +105,7 @@ class ObsidianWriter:
 
     def _build_content(
         self,
-        track: TrackInfo,
+        album_info: AlbumInfo,
         album_tracks: list[AlbumTrack],
         cover_filename: str,
         today: str,
@@ -123,11 +125,11 @@ class ObsidianWriter:
 
         lines = [
             "---",
-            f"artist: {track.artist}",
+            f"artist: {album_info.artist}",
             "music_genre:",
-            f"release: {track.release_year}",
+            f"release: {album_info.release_year}",
             f"date: {today}",
-            "rating: 0.00",        # placeholder — recalculated below
+            "rating: 0.00",
             f"cover: {cover_filename}",
             "---",
             f"![[{cover_filename}|135]]",
