@@ -29,6 +29,15 @@ class StarRating(ctk.CTkFrame):
             lbl.bind("<Button-1>", lambda e, n=i: self._on_click(n))
             self._stars.append(lbl)
 
+        self._label = ctk.CTkLabel(
+            self,
+            text="",
+            font=ctk.CTkFont(size=14),
+            text_color="#aaaaaa",
+            width=40,
+        )
+        self._label.grid(row=0, column=10, padx=(6, 0))
+
     def _on_hover(self, n: int) -> None:
         self._hover = n
         self._refresh()
@@ -51,6 +60,13 @@ class StarRating(ctk.CTkFrame):
                 lbl.configure(text=self._FILLED, text_color=color)
             else:
                 lbl.configure(text=self._EMPTY, text_color=self._COLOR_EMPTY)
+
+        if self._hover:
+            self._label.configure(text=f"{self._hover}/10")
+        elif self._rating:
+            self._label.configure(text=f"{self._rating}/10")
+        else:
+            self._label.configure(text="")
 
     def get(self) -> int:
         return self._rating

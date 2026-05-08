@@ -62,12 +62,11 @@ class SpotifyClient:
             return None
 
         album = item["album"]
-        artists = item["artists"]
         images = album.get("images", [])
 
         cover_url = images[0]["url"] if images else ""
         release_year = self._parse_year(album.get("release_date", ""))
-        artist = ", ".join(a["name"] for a in artists)
+        artist = ", ".join(a["name"] for a in album.get("artists", []))
 
         return TrackInfo(
             track_id=item["id"],

@@ -27,6 +27,14 @@ class ObsidianWriter:
         self._root = Path(reviews_path)
         if not self._root.exists():
             raise EnvironmentError(f"Reviews folder does not exist: {self._root}")
+
+        assets_path = os.getenv("OBSIDIAN_ASSETS_PATH", "")
+        if not assets_path:
+            raise EnvironmentError("OBSIDIAN_ASSETS_PATH is not set in .env")
+        self._assets = Path(assets_path)
+        if not self._assets.exists():
+            raise EnvironmentError(f"Assets folder does not exist: {self._assets}")
+
         self._spotify = spotify
 
     # ------------------------------------------------------------------ #
@@ -77,7 +85,7 @@ class ObsidianWriter:
     def _create_file(self, path: Path, track: TrackInfo, rating: int, notes: str) -> None:
         timestamp_ms = int(time.time() * 1000)
         cover_filename = f"{_sanitize(track.album_name)}-{timestamp_ms}.png"
-        self._download_image(track.cover_url, self._root / cover_filename)
+        self._download_image(track.cover_url, self._assets / cover_filename)
 
         album_tracks = self._spotify.get_album_tracks(track.album_id)
         today = date.today().isoformat()
@@ -162,9 +170,8 @@ class ObsidianWriter:
     # ------------------------------------------------------------------ #
 
     def _file_path(self, track: TrackInfo) -> Path:
-        artist = _sanitize(track.artist)
         album = _sanitize(track.album_name)
-        return self._root / f"{artist} - {album}.md"
+        return self._root / f"{album}.md"
 
     @staticmethod
     def _find_row(content: str, track_name: str) -> str | None:

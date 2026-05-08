@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from typing import Callable
 
 import customtkinter as ctk
@@ -120,19 +121,27 @@ class App(ctk.CTk):
     # ------------------------------------------------------------------ #
 
     def _poll_spotify(self) -> None:
-        try:
-            track = self._spotify.get_current_track()
-            if track is None and self._current_track is not None:
-                self._show_idle()
-            elif track is not None and (
-                self._current_track is None
-                or track.track_id != self._current_track.track_id
-            ):
-                self._on_track_changed(track)
-        except Exception as exc:
-            self._set_status(f"Spotify error: {exc}", error=True)
+        def fetch():
+            try:
+                track = self._spotify.get_current_track()
+                self.after(0, self._apply_poll_result, track, None)
+            except Exception as exc:
+                self.after(0, self._apply_poll_result, None, exc)
 
+        threading.Thread(target=fetch, daemon=True).start()
         self.after(POLL_INTERVAL_MS, self._poll_spotify)
+
+    def _apply_poll_result(self, track: TrackInfo | None, exc: Exception | None) -> None:
+        if exc is not None:
+            self._set_status(f"Spotify error: {exc}", error=True)
+            return
+        if track is None and self._current_track is not None:
+            self._show_idle()
+        elif track is not None and (
+            self._current_track is None
+            or track.track_id != self._current_track.track_id
+        ):
+            self._on_track_changed(track)
 
     def _on_track_changed(self, track: TrackInfo) -> None:
         self._current_track = track
@@ -181,12 +190,26 @@ class App(ctk.CTk):
             return
 
         notes = self._notes.get("1.0", "end").strip()
+        track = self._current_track
 
-        try:
-            self._on_submit_cb(self._current_track, rating, notes)
-            self._set_status("Review saved!")
-        except Exception as exc:
+        self._submit_btn.configure(state="disabled")
+        self._set_status("Saving…")
+
+        def save():
+            try:
+                self._on_submit_cb(track, rating, notes)
+                self.after(0, self._on_save_done, None)
+            except Exception as exc:
+                self.after(0, self._on_save_done, exc)
+
+        threading.Thread(target=save, daemon=True).start()
+
+    def _on_save_done(self, exc: Exception | None) -> None:
+        self._submit_btn.configure(state="normal")
+        if exc is not None:
             self._set_status(f"Error saving: {exc}", error=True)
+        else:
+            self._set_status("Review saved!")
 
     def _set_status(self, msg: str, *, error: bool = False) -> None:
         color = _COLOR_ERROR if error else _COLOR_SUCCESS
